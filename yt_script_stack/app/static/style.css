@@ -1,0 +1,6 @@
+.container { max-width: 980px; margin: 24px auto; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border-bottom: 1px solid #ddd; padding: 8px; vertical-align: top; }
+th { text-align: left; background: #f7f7f7; }
+.snippet { margin: 6px 0 14px 0; padding: 10px; background: #f9f9f9; border: 1px solid #eee; white-space: pre-wrap; }
+textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }

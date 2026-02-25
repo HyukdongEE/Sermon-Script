@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <title>Search UI</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+  <div class="container">
+    <p><a href="/admin?token={{token}}">← admin</a></p>
+    <h1>Search</h1>
+    <form method="get" action="/search-ui">
+      <input type="hidden" name="token" value="{{token}}"/>
+      <input type="text" name="q" value="{{q}}" style="width: 60%;" placeholder="키워드 입력"/>
+      <button type="submit">Search</button>
+    </form>
+
+    {% if q %}
+      <h2>Results for: "{{q}}"</h2>
+      <ul>
+      {% for r in results %}
+        <li>
+          <a href="{{r.url}}" target="_blank">{{r.title}}</a>
+          (segment #{{r.chunk_index}}, similarity={{r.similarity}})
+          <div class="snippet">{{r.snippet}}</div>
+        </li>
+      {% else %}
+        <li>No results</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</body>
+</html>
