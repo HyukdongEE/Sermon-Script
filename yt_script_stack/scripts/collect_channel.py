@@ -132,3 +132,24 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def collect_channel_to_db(youtube_api_key: str, channel_id: str, max_pages: int, database_url: str) -> int:
+    """
+    Collect channel uploads into DB.
+    Returns number of videos upserted.
+    """
+    # 기존 CLI 로직에서 쓰는 함수들을 그대로 재사용하거나,
+    # 현재 파일에 있는 main/collect 루틴을 함수로 감싼 형태로 구현하세요.
+
+    # ✅ 가장 쉬운 방법: 기존에 이미 있는 함수들을 호출
+    # (예: get_uploads_playlist_id, iter_playlist_video_ids, upsert 등)
+    # 이 프로젝트 템플릿에 따라 이름이 다를 수 있어 아래는 "패턴"입니다.
+
+    from app.db import get_conn  # 프로젝트에 맞게 수정될 수 있음
+    from app.youtube import collect_channel_uploads  # 없다면 scripts 안에서 직접 구현
+
+    conn = get_conn(database_url)
+    try:
+        return collect_channel_uploads(conn, youtube_api_key, channel_id, max_pages=max_pages)
+    finally:
+        conn.close()

@@ -228,3 +228,53 @@ def _job_segment(conn, payload: dict):
                        VALUES (%s,%s,%s,NULL,NULL,NULL,%s,NULL, now())""", (transcript_id, tr["video_id"], idx, seg))
 
     cur.execute("""UPDATE videos SET status='INDEXED' WHERE video_id=%s""", (tr["video_id"],))
+
+import os
+import subprocess
+from fastapi import HTTPException
+from starlette.responses import JSONResponse
+
+@app.get("/admin/collect")
+def admin_collect(token: str, max_pages: int = 1, channel_id: str | None = None):
+    # 1) 관리자 토큰 검사
+    admin_token = os.getenv("ADMIN_TOKEN")
+    if not admin_token or token != admin_token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # 2) 환경변수 확인
+    yt_key = os.getenv("YOUTUBE_API_KEY")
+    db_url = os.getenv("DATABASE_URL")
+
+    # channel_id는 (a) URL 파라미터로 받거나 (b) ENV CHANNEL_ID 사용
+    ch_id = channel_id or os.getenv("CHANNEL_ID")
+
+    if not yt_key:
+        raise HTTPException(status_code=400, detail="Missing YOUTUBE_API_KEY")
+    if not db_url:
+        raise HTTPException(status_code=400, detail="Missing DATABASE_URL")
+    if not ch_id:
+        raise HTTPException(status_code=400, detail="Missing CHANNEL_ID (env) or channel_id (param)")
+
+    # 3) 기존 수집 스크립트를 서버가 실행
+    env = os.environ.copy()
+    env["YOUTUBE_API_KEY"] = yt_key
+    env["DATABASE_URL"] = db_url
+
+    cmd = [
+        "python", "-m", "scripts.collect_channel",
+        "--channel-id", ch_id,
+        "--max-pages", str(max_pages),
+    ]
+
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=120)
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="collect timed out (try smaller max_pages)")
+
+    if p.returncode != 0:
+        # stderr 마지막 일부만 보여주기
+        err_tail = (p.stderr or "")[-1200:]
+        raise HTTPException(status_code=500, detail=f"collect failed: {err_tail}")
+
+    out_tail = (p.stdout or "")[-1200:]
+    return JSONResponse({"ok": True, "channel_id": ch_id, "max_pages": max_pages, "stdout_tail": out_tail})
