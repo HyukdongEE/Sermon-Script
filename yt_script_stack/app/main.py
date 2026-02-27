@@ -68,35 +68,63 @@ def add_transcript(
     raw_text: str = Form(...),
     source: str = Form("manual_paste"),
 ):
-def add_transcript(video_id: str, token: str, raw_text: str = Form(...), ...):
     _check_token(token)
+
     raw_text = (raw_text or "").strip()
     if not raw_text:
-        return RedirectResponse(url=f"/admin/video/{video_id}?token={token}", status_code=303)
+        return RedirectResponse(
+            url=f"/admin/video/{video_id}?token={token}",
+            status_code=303
+        )
 
     with db_conn() as conn:
         cur = conn.cursor()
+
         # determine next version
-        cur.execute("""SELECT COALESCE(MAX(version),0)+1 AS next_version
-                       FROM transcripts WHERE video_id=%s AND source=%s""", (video_id, source))
+        cur.execute(
+            """
+            SELECT COALESCE(MAX(version),0)+1 AS next_version
+            FROM transcripts
+            WHERE video_id=%s AND source=%s
+            """,
+            (video_id, source)
+        )
         next_version = cur.fetchone()["next_version"]
 
-        cur.execute("""INSERT INTO transcripts (video_id, source, version, raw_text, cleaned_text, created_at, updated_at)
-                       VALUES (%s,%s,%s,%s,NULL, now(), now())
-                       RETURNING transcript_id""", (video_id, source, next_version, raw_text))
+        cur.execute(
+            """
+            INSERT INTO transcripts
+            (video_id, source, version, raw_text, cleaned_text, created_at, updated_at)
+            VALUES (%s,%s,%s,%s,NULL, now(), now())
+            RETURNING transcript_id
+            """,
+            (video_id, source, next_version, raw_text)
+        )
         transcript_id = cur.fetchone()["transcript_id"]
 
-        # enqueue jobs: CLEAN then SEGMENT
-        cur.execute("""INSERT INTO jobs (job_type, status, payload, created_at, updated_at)
-                       VALUES
-                       ('CLEAN','PENDING', %s::jsonb, now(), now()),
-                       ('SEGMENT','PENDING', %s::jsonb, now(), now())""",
-                    (f'{{"transcript_id": {transcript_id}}}', f'{{"transcript_id": {transcript_id}}}'))
+        # enqueue jobs
+        cur.execute(
+            """
+            INSERT INTO jobs (job_type, status, payload, created_at, updated_at)
+            VALUES
+            ('CLEAN','PENDING', %s::jsonb, now(), now()),
+            ('SEGMENT','PENDING', %s::jsonb, now(), now())
+            """,
+            (
+                f'{{"transcript_id": {transcript_id}}}',
+                f'{{"transcript_id": {transcript_id}}}',
+            ),
+        )
 
-        # update video status
-        cur.execute("""UPDATE videos SET status='TEXT_ADDED' WHERE video_id=%s""", (video_id,))
+        cur.execute(
+            "UPDATE videos SET status='TEXT_ADDED' WHERE video_id=%s",
+            (video_id,)
+        )
 
-    return RedirectResponse(url=f"/admin/video/{video_id}?token={token}", status_code=303)
+    return RedirectResponse(
+        url=f"/admin/video/{video_id}?token={token}",
+        status_code=303
+    )
 
 @app.post("/admin/run-jobs")
 def run_jobs_now(token: str, batch: int = Form(10)):
