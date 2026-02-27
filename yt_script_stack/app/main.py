@@ -68,6 +68,7 @@ def add_transcript(
     raw_text: str = Form(...),
     source: str = Form("manual_paste"),
 ):
+    video_id = (video_id or "").strip()   # ✅ 여기(함수 본문)에 둡니다
     _check_token(token)
 
     raw_text = (raw_text or "").strip()
@@ -80,6 +81,12 @@ def add_transcript(
     with db_conn() as conn:
         cur = conn.cursor()
 
+        cur.execute("SELECT 1 FROM videos WHERE video_id=%s", (video_id,))
+        if not cur.fetchone():
+            return HTMLResponse(
+                f"Video not found in DB: {repr(video_id)}. Go back to /admin and open from list.",
+                status_code=404,
+            )
         # determine next version
         cur.execute(
             """
