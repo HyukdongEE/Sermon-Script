@@ -62,6 +62,12 @@ def admin_video(request: Request, video_id: str, token: str):
     )
 
 @app.post("/admin/video/{video_id}/transcript")
+def add_transcript(
+    video_id: str,
+    token: str,
+    raw_text: str = Form(...),
+    source: str = Form("manual_paste"),
+):
 def add_transcript(video_id: str, token: str, raw_text: str = Form(...), ...):
     _check_token(token)
     raw_text = (raw_text or "").strip()
